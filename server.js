@@ -4,7 +4,7 @@ var requestHandler = require('./requestHandler');
 var utils = require('./utils');
 var bodyParser = require('body-parser');
 
-const numOfQuestions = 10;
+const numOfQuestions = 5;
 var multiplayerQueue = {
     "android": [],
     "java": []
@@ -141,7 +141,7 @@ app.post('/multiplayer/find', (req, res) => {
     }
 })
 
-
+//Canceling to find the match
 //Input : { course:"android", id:"12392183"}
 //Output : { status:"Success", sessionId: "123123954845" }
 app.post('/multiplayer/cancelfind', (req, res) => {
@@ -159,10 +159,30 @@ app.post('/multiplayer/cancelfind', (req, res) => {
 //Output : {question : Array, playerData : jsonObject}
 app.get(`/multiplayer/session/:sessionId`, (req, res) => {
     requestHandler.get(`/multiplayer/session/${req.params.sessionId}`, sessionData => {
-        let quizQuestionsAndData = {
-            question: sessionData.questions[sessionData.questionIndex],
-            playerData: sessionData.playerData
+
+
+
+        const questions = {
+            ...sessionData.questions[sessionData.questionIndex]
         }
+
+        let playerStatus = [];
+
+        for (let playerData in sessionData.playerData) {
+            playerStatus.push(
+                {
+                    playerId: playerData,
+                    playerScore: sessionData.playerData[playerData].score,
+                })
+        }
+
+        let quizQuestionsAndData = {
+            question: questions.question,
+            options: questions.options,
+            answer: questions.answer,
+            playerStatus: playerStatus,
+        }
+
 
         res.send(quizQuestionsAndData);
     })
@@ -174,6 +194,7 @@ app.get(`/multiplayer/session/:sessionId`, (req, res) => {
 //Input : { id:"1312312", answer:"asdasda" }
 //Output : { status:"Success", endOfQuiz : true } | { status:"Success", endOfQuiz : false }
 app.post(`/multiplayer/session/:sessionId`, (req, res) => {
+
     requestHandler.get(`/multiplayer/session/${req.params.sessionId}`, sessionData => {
         let playerId = req.body.id;
         let answer = req.body.answer;
@@ -220,6 +241,7 @@ app.post(`/multiplayer/session/:sessionId`, (req, res) => {
             //Quiz is over send that data to end user in object so delete quiz session object and update multiplayer streak
             if (sessionData.questionIndex === sessionData.questions.length)
                 quizStatus.endOfQuiz = true;
+
             //Sending response to previous player and current player that answers noted 
             playerInQueue.responseObject.send(quizStatus);
             res.send(quizStatus);
@@ -238,9 +260,10 @@ app.post(`/multiplayer/session/:sessionId`, (req, res) => {
 });
 
 //Route Params : Session id 
-//Output : {status:"Success"}
-app.post(`/multiplayer/session/quiz-over/:sessionId`, (req, res) => {
+//Output : {status:"Success",winnerId:"2130218"}
+app.get(`/multiplayer/session/quiz-over/:sessionId`, (req, res) => {
     let sessionId = req.params.sessionId;
+
 
     requestHandler.get(`/multiplayer/session/${sessionId}`, (sessionData) => {
         try {
@@ -260,19 +283,22 @@ app.post(`/multiplayer/session/quiz-over/:sessionId`, (req, res) => {
                 }
             }
 
-            //Getting user data for the winner id
-            requestHandler.get(`/users/${winnerId}`, (userData) => {
-                userData.MultiPlayerStreak += 1;
-                //Putting the updated score
-                requestHandler.put(`/users/${winnerId}`, userData, (resp) => {
-                    // console.log("Updated Multiplayer score = ", resp);
-                    //Deleting the session
-                    requestHandler.delete(`/multiplayer/session/${sessionId}`, (deleteResponse) => {
-                        // console.log("Delted = ", deleteResponse);
-                        res.send({ status: deleteResponse })
+            const reply = { status: "Match Over", winnerId: winnerId }
+
+            if (winnerId == null)
+                res.send(reply)
+
+            else {
+                //Getting user data for the winner id
+                requestHandler.get(`/users/${winnerId}`, (userData) => {
+                    userData.MultiPlayerStreak += 1;
+                    //Putting the updated score
+                    requestHandler.put(`/users/${winnerId}`, userData, (resp) => {
+
+                        res.send(reply)
                     })
                 })
-            })
+            }
         }
         catch (error) {
             res.send({ status: error.message })
