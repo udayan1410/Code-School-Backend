@@ -4,7 +4,7 @@ var requestHandler = require('./requestHandler');
 var utils = require('./utils');
 var bodyParser = require('body-parser');
 
-const numOfQuestions = 5;
+const numOfQuestions = 10;
 var multiplayerQueue = {
     "android": [],
     "java": []
