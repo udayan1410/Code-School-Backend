@@ -3,7 +3,7 @@ var socket = require('socket.io');
 var utils = require('./utils');
 var requestHandler = require('./requestHandler');
 var bodyParser = require('body-parser');
-const totalNumQuestions = 2;
+const totalNumQuestions = 5;
 
 //App setup
 var app = express();
