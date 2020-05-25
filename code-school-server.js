@@ -37,7 +37,6 @@ app.post('/signup', (req, res) => {
         SinglePlayerStreak: 0,
         MultiPlayerStreak: 0,
     }
-
     //Checking if user exists
     getAllUsers((resp) => {
         let duplicate = false;
