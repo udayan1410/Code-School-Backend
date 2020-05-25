@@ -109,7 +109,7 @@ io.of('/multiplayer/find').on('connection', (socket) => {
 
 
         if (questionIndex < totalNumQuestions) {
-            console.log("Sending question to room " + roomID);
+
             io.of('/multiplayer/find').to(roomID).emit('GetQuestionEvent', quizStatus);
         }
 
