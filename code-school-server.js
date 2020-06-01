@@ -83,7 +83,8 @@ app.post('/login', (req, res) => {
 })
 
 
-var server = app.listen(3000, () => console.log("Listening on port 3000"));
+//process.env.PORT
+var server = app.listen(process.env.PORT, () => console.log("Listening on port 3000"));
 
 //socket setup
 var io = socket(server);
