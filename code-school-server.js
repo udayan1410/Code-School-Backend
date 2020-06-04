@@ -34,7 +34,7 @@ app.post('/signup', (req, res) => {
     let userData = {
         ...req.body,
         id: id,
-        SinglePlayerStreak: 0,
+        CurrentStreak: 0,
         MultiPlayerStreak: 0,
     }
     //Checking if user exists
@@ -84,7 +84,7 @@ app.post('/login', (req, res) => {
 
 
 //process.env.PORT
-var server = app.listen(process.env.PORT, () => console.log("Listening on port 3000"));
+var server = app.listen(3000, () => console.log("Listening on port 3000"));
 
 //socket setup
 var io = socket(server);
@@ -130,8 +130,6 @@ io.of('/multiplayer/find').on('connection', (socket) => {
 
         // console.log(id + " finding for: " + course);
         matchFindQueue[course].push({ id, socket, userName });
-
-        console.log("Player pushed in queue ", data);
 
         if (matchFindQueue[course].length >= 2) {
             let player1 = matchFindQueue[course].pop();
@@ -208,7 +206,6 @@ io.of('/multiplayer/find').on('connection', (socket) => {
 
         //Both players answered
         if (QuizRoomsData[roomid].playersAnswered.length == 2) {
-            console.log("Popping players out of queue as both have answered");
             QuizRoomsData[roomid].questionIndex += 1;
             QuizRoomsData[roomid].playersAnswered.splice(0, 2);
             sendQuestion(roomid);
@@ -236,11 +233,14 @@ io.of('/multiplayer/find').on('connection', (socket) => {
     socket.on('MatchOver', (data) => {
         let { sessionid } = JSON.parse(data);
 
-        console.log("Got sessionid = " + sessionid);
+        console.log("Match Over");
+
 
         let quizEndStatus = {
             status: "",
             winnerId: "",
+            winnerScore: "",
+            loserId: "",
             playerData: QuizRoomsData[sessionid].playerData
         }
 
@@ -255,11 +255,15 @@ io.of('/multiplayer/find').on('connection', (socket) => {
         else if (playerData[0].playerScore > playerData[1].playerScore) {
             quizEndStatus.status = "We have a winner";
             quizEndStatus.winnerId = playerData[0].playerid;
+            quizEndStatus.winnerScore = playerData[0].playerScore;
+            quizEndStatus.loserId = playerData[1].playerid;
         }
 
         else {
             quizEndStatus.status = "We have a winner";
             quizEndStatus.winnerId = playerData[1].playerid;
+            quizEndStatus.winnerScore = playerData[1].playerScore;
+            quizEndStatus.loserId = playerData[0].playerid;
         }
 
         QuizRoomsData[sessionid].winner = quizEndStatus.winnerId;
@@ -270,22 +274,30 @@ io.of('/multiplayer/find').on('connection', (socket) => {
             if (!QuizRoomsData[sessionid].scoreUpdated) {
                 QuizRoomsData[sessionid].scoreUpdated = true;
                 requestHandler.get(`/users/${quizEndStatus.winnerId}`, (data) => {
-                    let multiplayerStreak = data.MultiPlayerStreak;
-                    multiplayerStreak += 1;
 
-                    data.MultiPlayerStreak = multiplayerStreak;
+                    data.CurrentStreak += 1;
 
-                    // console.log("Updated data = ", data);
+                    if (data.MultiPlayerStreak < data.CurrentStreak)
+                        data.MultiPlayerStreak = data.CurrentStreak;
 
                     requestHandler.put(`/users/${quizEndStatus.winnerId}`, data, (status) => {
-                        io.of('/multiplayer/find').to(sessionid).emit('MatchOver', quizEndStatus);
+                        io.of('/multiplayer/find').in(sessionid).emit('MatchOver', quizEndStatus);
                         QuizRoomsData[sessionid].scoreUpdated = false;
                     })
                 })
+
+                //Update loser streak to 0
+                requestHandler.get(`/users/${quizEndStatus.loserId}`, (data) => {
+                    data.CurrentStreak = 0;
+                    //Push the data to server
+                    requestHandler.put(`/users/${quizEndStatus.loserId}`, data, (status) => console.log("Update loser streak as  0"));
+                })
             }
+
             else
                 io.of('/multiplayer/find').to(sessionid).emit('MatchOver', quizEndStatus);
         }
+        //Its a tie so send back status
         else
             io.of('/multiplayer/find').to(sessionid).emit('MatchOver', quizEndStatus);
 
