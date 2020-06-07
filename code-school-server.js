@@ -17,6 +17,10 @@ var matchFindQueue = {
 var QuizRoomsData = {}
 
 
+//process.env.PORT
+var server = app.listen(3000, () => console.log("Listening on port 3000"));
+
+
 //Get and Post Requests handler
 
 //Helper function
@@ -83,8 +87,6 @@ app.post('/login', (req, res) => {
 })
 
 
-//process.env.PORT
-var server = app.listen(process.env.PORT, () => console.log("Listening on port 3000"));
 
 //socket setup
 var io = socket(server);
